@@ -1,0 +1,9 @@
+{
+	"name": "ott-datafactory-055",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "dd95cd66-f722-4529-a812-d6fb0bdcad0b",
+		"tenantId": "ca9bb174-6f02-491c-a00b-a5842b88ff0a"
+	}
+}

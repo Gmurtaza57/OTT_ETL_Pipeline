@@ -1,0 +1,17 @@
+{
+	"name": "LS_FS_input",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "FileServer",
+		"typeProperties": {
+			"host": "C:\\Host",
+			"userId": "murtaza",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiI3YmI4MjExYS1iODU5LTQyNGQtOGUxOC1jNmMyY2EwMDZhMzUiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedAzureVM",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

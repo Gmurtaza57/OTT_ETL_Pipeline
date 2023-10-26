@@ -1,0 +1,13 @@
+{
+	"name": "LS_Notebook_Transform",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSynapseArtifacts",
+		"typeProperties": {
+			"endpoint": "https://ott-synapse-021.dev.azuresynapse.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/e1946da6-fb07-4d7a-9da6-243664a5deb0/resourceGroups/ott-resourcegrp/providers/Microsoft.Synapse/workspaces/ott-synapse-021"
+		}
+	}
+}
