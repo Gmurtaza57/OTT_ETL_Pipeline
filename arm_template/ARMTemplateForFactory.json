@@ -1,0 +1,1069 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "ott-datafactory-055"
+        },
+        "FileServer1_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'FileServer1'"
+        },
+        "LS_FS_input_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'LS_FS_input'"
+        },
+        "LS_SQL_Load_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'LS_SQL_Load'"
+        },
+        "FileServer1_properties_typeProperties_host": {
+            "type": "string",
+            "defaultValue": "C:\\Users\\murtaza\\Downloads\\Host"
+        },
+        "FileServer1_properties_typeProperties_userId": {
+            "type": "string",
+            "defaultValue": "murtaza"
+        },
+        "LS_FS_input_properties_typeProperties_host": {
+            "type": "string",
+            "defaultValue": "C:\\Host"
+        },
+        "LS_FS_input_properties_typeProperties_userId": {
+            "type": "string",
+            "defaultValue": "murtaza"
+        },
+        "LS_Notebook_Transform_properties_typeProperties_endpoint": {
+            "type": "string",
+            "defaultValue": "https://ott-synapse-021.dev.azuresynapse.net"
+        },
+        "LS_adls_Ingest_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://ottadls011.dfs.core.windows.net"
+        },
+        "LS_keyVault_properties_typeProperties_baseUrl": {
+            "type": "string",
+            "defaultValue": "https://ottvault001.vault.azure.net/"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_OnPrem_ADLS_Ingest')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Copy data1",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "DelimitedTextSource",
+                                "storeSettings": {
+                                    "type": "FileServerReadSettings",
+                                    "recursive": true,
+                                    "modifiedDatetimeStart": {
+                                        "value": "@startOfDay(utcNow())",
+                                        "type": "Expression"
+                                    },
+                                    "modifiedDatetimeEnd": {
+                                        "value": "@utcNow()",
+                                        "type": "Expression"
+                                    },
+                                    "wildcardFileName": "*.csv",
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "DelimitedTextSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSWriteSettings"
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextWriteSettings",
+                                    "quoteAllText": true,
+                                    "fileExtension": ".txt"
+                                }
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_OnPrem_File",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_adls_ingest",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2023-10-24T14:48:45Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_OnPrem_File')]",
+                "[concat(variables('factoryId'), '/datasets/DS_adls_ingest')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_ADLS_to_SQL')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Copy data1",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "ParquetSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "wildcardFileName": "*.parquet",
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "ParquetReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "AzureSqlSink",
+                                "writeBehavior": "insert",
+                                "sqlWriterUseTableLock": false,
+                                "tableOption": "autoCreate",
+                                "disableMetricsCollection": false
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_ADLS_Refined",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_SQL_Load",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2023-10-25T05:35:21Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_ADLS_Refined')]",
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_Load')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Ingest_Incremental_load')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Get Metadata1",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "DS_OnPrem_File",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "fieldList": [
+                                "childItems",
+                                "itemName"
+                            ],
+                            "storeSettings": {
+                                "type": "FileServerReadSettings",
+                                "recursive": true,
+                                "enablePartitionDiscovery": false
+                            },
+                            "formatSettings": {
+                                "type": "DelimitedTextReadSettings"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ForEach1",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "Get Metadata1",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('Get Metadata1').output.childItems",
+                                "type": "Expression"
+                            },
+                            "isSequential": true,
+                            "activities": [
+                                {
+                                    "name": "If Condition1",
+                                    "type": "IfCondition",
+                                    "dependsOn": [],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@equals(substring(item().name,0,10),formatDateTime(utcnow(),'yyyy-MM-dd'))",
+                                            "type": "Expression"
+                                        },
+                                        "ifFalseActivities": [
+                                            {
+                                                "name": "Wait1",
+                                                "type": "Wait",
+                                                "dependsOn": [],
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "waitTimeInSeconds": 1
+                                                }
+                                            }
+                                        ],
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "Copy data1",
+                                                "type": "Copy",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.12:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "DelimitedTextSource",
+                                                        "storeSettings": {
+                                                            "type": "FileServerReadSettings",
+                                                            "recursive": true,
+                                                            "enablePartitionDiscovery": false
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextReadSettings"
+                                                        }
+                                                    },
+                                                    "sink": {
+                                                        "type": "DelimitedTextSink",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSWriteSettings"
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextWriteSettings",
+                                                            "quoteAllText": true,
+                                                            "fileExtension": ".txt"
+                                                        }
+                                                    },
+                                                    "enableStaging": false,
+                                                    "translator": {
+                                                        "type": "TabularTranslator",
+                                                        "typeConversion": true,
+                                                        "typeConversionSettings": {
+                                                            "allowDataTruncation": true,
+                                                            "treatBooleanAsNumber": false
+                                                        }
+                                                    }
+                                                },
+                                                "inputs": [
+                                                    {
+                                                        "referenceName": "DS_Onprem_File_param",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "FileName": {
+                                                                "value": "@{item().name}",
+                                                                "type": "Expression"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "outputs": [
+                                                    {
+                                                        "referenceName": "DS_ADLS_ingest_Param",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "FileName": {
+                                                                "value": "@{item().name}",
+                                                                "type": "Expression"
+                                                            },
+                                                            "Foldername": {
+                                                                "value": "ingest/@{formatDateTime(utcnow(),'yyyy-MM-dd')}",
+                                                                "type": "Expression"
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2023-10-25T05:58:26Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_OnPrem_File')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Onprem_File_param')]",
+                "[concat(variables('factoryId'), '/datasets/DS_ADLS_ingest_Param')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Orchestrate_all')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Extract",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "PL_Ingest_Incremental_load",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Transform",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [
+                            {
+                                "activity": "Extract",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "PL_Synapse_Transform",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Load",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [
+                            {
+                                "activity": "Transform",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "PL_ADLS_to_SQL",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Web1",
+                        "type": "WebActivity",
+                        "dependsOn": [
+                            {
+                                "activity": "Extract",
+                                "dependencyConditions": [
+                                    "Failed"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "url": "https://prod-81.eastus.logic.azure.com:443/workflows/5385879b1a10461291a6dc967c8072a0/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AnPvoOw8r5ZT6qGmNhMf6Hr6dTQHupF6Nb0xczgg7l8",
+                            "method": "POST",
+                            "headers": {},
+                            "body": {
+                                "value": "{\n\n'pipelinename': '@{pipeline().Pipeline}',\n'DataFactory Name': '@{pipeline().DataFactory}',\n 'RunID': '@{pipeline().RunId}'\n\n\n}",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Web1_copy1",
+                        "type": "WebActivity",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "url": "https://prod-81.eastus.logic.azure.com:443/workflows/5385879b1a10461291a6dc967c8072a0/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AnPvoOw8r5ZT6qGmNhMf6Hr6dTQHupF6Nb0xczgg7l8",
+                            "method": "POST",
+                            "headers": {},
+                            "body": {
+                                "value": "{\n\n'pipelinename': '@{pipeline().Pipeline}',\n'DataFactory Name': '@{pipeline().DataFactory}',\n 'RunID': '@{pipeline().RunId}'\n\n\n}",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Web1_copy1_copy1",
+                        "type": "WebActivity",
+                        "dependsOn": [
+                            {
+                                "activity": "Transform",
+                                "dependencyConditions": [
+                                    "Failed"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "url": "https://prod-81.eastus.logic.azure.com:443/workflows/5385879b1a10461291a6dc967c8072a0/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AnPvoOw8r5ZT6qGmNhMf6Hr6dTQHupF6Nb0xczgg7l8",
+                            "method": "POST",
+                            "headers": {},
+                            "body": {
+                                "value": "{\n\n'pipelinename': '@{pipeline().Pipeline}',\n'DataFactory Name': '@{pipeline().DataFactory}',\n 'RunID': '@{pipeline().RunId}'\n\n\n}",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Web1_copy1_copy1_copy1",
+                        "type": "WebActivity",
+                        "dependsOn": [
+                            {
+                                "activity": "Load",
+                                "dependencyConditions": [
+                                    "Failed"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "url": "https://prod-81.eastus.logic.azure.com:443/workflows/5385879b1a10461291a6dc967c8072a0/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AnPvoOw8r5ZT6qGmNhMf6Hr6dTQHupF6Nb0xczgg7l8",
+                            "method": "POST",
+                            "headers": {},
+                            "body": {
+                                "value": "{\n\n'pipelinename': '@{pipeline().Pipeline}',\n'DataFactory Name': '@{pipeline().DataFactory}',\n 'RunID': '@{pipeline().RunId}'\n\n\n}",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2023-10-25T22:59:47Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/PL_Ingest_Incremental_load')]",
+                "[concat(variables('factoryId'), '/pipelines/PL_Synapse_Transform')]",
+                "[concat(variables('factoryId'), '/pipelines/PL_ADLS_to_SQL')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Synapse_Transform')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Notebook1",
+                        "type": "SynapseNotebook",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "notebook": {
+                                "referenceName": {
+                                    "value": "Notebook 1",
+                                    "type": "Expression"
+                                },
+                                "type": "NotebookReference"
+                            },
+                            "snapshot": true,
+                            "sparkPool": {
+                                "referenceName": {
+                                    "value": "SparkPool",
+                                    "type": "Expression"
+                                },
+                                "type": "BigDataPoolReference"
+                            },
+                            "executorSize": "Small",
+                            "conf": {
+                                "spark.dynamicAllocation.enabled": null,
+                                "spark.dynamicAllocation.minExecutors": null,
+                                "spark.dynamicAllocation.maxExecutors": null
+                            },
+                            "driverSize": "Small",
+                            "numExecutors": null
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "LS_Notebook_Transform",
+                            "type": "LinkedServiceReference"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2023-10-25T04:03:47Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_Notebook_Transform')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_ADLS_Refined')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_adls_Ingest",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Parquet",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "folderPath": "data",
+                        "fileSystem": "refined"
+                    },
+                    "compressionCodec": "snappy"
+                },
+                "schema": [
+                    {
+                        "name": "Title",
+                        "type": "UTF8"
+                    },
+                    {
+                        "name": "Genre",
+                        "type": "UTF8"
+                    },
+                    {
+                        "name": "ReleaseDate",
+                        "type": "DATE"
+                    },
+                    {
+                        "name": "IMDB_Score",
+                        "type": "DOUBLE"
+                    },
+                    {
+                        "name": "Language",
+                        "type": "UTF8"
+                    },
+                    {
+                        "name": "Views",
+                        "type": "INT32"
+                    },
+                    {
+                        "name": "AddedDate",
+                        "type": "DATE"
+                    },
+                    {
+                        "name": "IMDB_Category",
+                        "type": "UTF8"
+                    },
+                    {
+                        "name": "RuntimeinHours",
+                        "type": "DOUBLE"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_adls_Ingest')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_ADLS_ingest_Param')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_adls_Ingest",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "FileName": {
+                        "type": "string"
+                    },
+                    "Foldername": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().FileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().Foldername",
+                            "type": "Expression"
+                        },
+                        "fileSystem": "raw"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Genre",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ReleaseDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Runtime",
+                        "type": "String"
+                    },
+                    {
+                        "name": "IMDB Score",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Language",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Views",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddedDate",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_adls_Ingest')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_OnPrem_File')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "FileServer1",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "FileServerLocation"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/FileServer1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Onprem_File_param')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "FileServer1",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "FileName": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "FileServerLocation",
+                        "fileName": {
+                            "value": "@dataset().FileName",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    },
+                    {
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/FileServer1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_Load')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQL_Load",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "ADLSingest"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQL_Load')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_adls_ingest')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_adls_Ingest",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "folderPath": "ingest",
+                        "fileSystem": "raw"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_adls_Ingest')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FileServer1')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "FileServer",
+                "typeProperties": {
+                    "host": "[parameters('FileServer1_properties_typeProperties_host')]",
+                    "userId": "[parameters('FileServer1_properties_typeProperties_userId')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('FileServer1_password')]"
+                    }
+                },
+                "connectVia": {
+                    "referenceName": "SelfHostedAzureVM",
+                    "type": "IntegrationRuntimeReference"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedAzureVM')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_FS_input')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "FileServer",
+                "typeProperties": {
+                    "host": "[parameters('LS_FS_input_properties_typeProperties_host')]",
+                    "userId": "[parameters('LS_FS_input_properties_typeProperties_userId')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('LS_FS_input_password')]"
+                    }
+                },
+                "connectVia": {
+                    "referenceName": "SelfHostedAzureVM",
+                    "type": "IntegrationRuntimeReference"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedAzureVM')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_Notebook_Transform')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSynapseArtifacts",
+                "typeProperties": {
+                    "endpoint": "[parameters('LS_Notebook_Transform_properties_typeProperties_endpoint')]",
+                    "authentication": "MSI",
+                    "workspaceResourceId": "/subscriptions/e1946da6-fb07-4d7a-9da6-243664a5deb0/resourceGroups/ott-resourcegrp/providers/Microsoft.Synapse/workspaces/ott-synapse-021"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_SQL_Load')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('LS_SQL_Load_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_adls_Ingest')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('LS_adls_Ingest_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_keyVault",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "accountKey"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_keyVault')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_keyVault')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_keyVault_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Tumbling')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Stopped",
+                "pipeline": {
+                    "pipelineReference": {
+                        "referenceName": "PL_Orchestrate_all",
+                        "type": "PipelineReference"
+                    },
+                    "parameters": {}
+                },
+                "type": "TumblingWindowTrigger",
+                "typeProperties": {
+                    "frequency": "Hour",
+                    "interval": 24,
+                    "startTime": "2023-10-26T12:00:00Z",
+                    "delay": "00:00:00",
+                    "maxConcurrency": 50,
+                    "retryPolicy": {
+                        "intervalInSeconds": 30
+                    },
+                    "dependsOn": []
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/PL_Orchestrate_all')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SelfHosted')]",
+            "type": "Microsoft.DataFactory/factories/integrationRuntimes",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "SelfHosted",
+                "typeProperties": {}
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SelfHostedAzureVM')]",
+            "type": "Microsoft.DataFactory/factories/integrationRuntimes",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "SelfHosted",
+                "typeProperties": {}
+            },
+            "dependsOn": []
+        }
+    ]
+}
